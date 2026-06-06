@@ -1,0 +1,88 @@
+name: opencord
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: opencord-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-opencord}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-opencord}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opencord} -d ${POSTGRES_DB:-opencord}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - opencord-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: opencord-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - opencord-net
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: opencord-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-opencord}:${POSTGRES_PASSWORD:-change_me}@postgres:5432/${POSTGRES_DB:-opencord}
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - opencord-net
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: opencord-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: ${OPENCORD_BASE_URL:-http://localhost:3000}
+      API_INTERNAL_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    networks:
+      - opencord-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  opencord-net:
+    driver: bridge
