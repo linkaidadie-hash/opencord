@@ -1,170 +1,190 @@
-# OpenCord / 开弦
+# OpenCord
 
-**An open, AI-native community system.**
+English | [简体中文](./README.zh-CN.md)
 
-A self-hostable social layer for communities that want to own their rules, data, and AI workflows.
+**An open-source, AI-native community system.**
 
-OpenCord is not trying to become another walled garden.
+It is not trying to become another walled garden. It is a self-hostable social layer for communities that want to own their rules, data, and AI workflows.
 
----
+OpenCord starts small: channels, posts, comments, notifications, admin tools, API tokens, AI summaries, and JSON export.
 
-## 核心理念
-
-- 用户自己拥有身份
-- 社区自己拥有规则
-- 数据不被平台封锁
-- AI 帮助理解、匹配、整理、连接
-- 自部署、可二开、可迁移
+The goal is not to clone existing social platforms.
+The goal is to give communities a portable foundation.
 
 ---
 
-## v0.1 范围（当前里程碑）
+## Why OpenCord
 
-- [x] 项目骨架 + 文档
-- [ ] 用户注册 / 登录（邮箱 + 密码）
-- [ ] 个人主页
-- [ ] API Token（用户级，Bot 接入预留）
-- [ ] 频道（公开 / 私有）
-- [ ] 帖子（含 Markdown）
-- [ ] 评论（一级 + 二级）
-- [ ] 标签
-- [ ] 站内通知（轮询，不上 WebSocket）
-- [ ] 基础后台：封号、删帖、AI Provider 配置
-- [ ] AI Provider 抽象层（OpenAI-compatible + 至少一家国产）
-- [ ] AI 总结帖子（基础能力 demo）
-- [ ] PostgreSQL schema（所有核心表预留 `tenant_id`）
-- [ ] JSON 数据导出
-- [ ] Docker Compose 一键部署
-- [ ] README / ROADMAP / LICENSE
+Today, many communities live inside closed platforms:
 
-## 不在 v0.1（已砍）
+- Relationship graphs belong to the platform
+- Data cannot be exported freely
+- APIs are limited or paid-only
+- Automation and AI integration are restricted
+- Platform rules change without notice
 
-私信 / 群聊 / WebSocket / Webhook / Bot 框架 / AI 画像 / AI 匹配 / AI 反垃圾 / 插件热加载 / ActivityPub / AT Protocol → 全部进 v0.2 / v0.3。
+OpenCord offers another path: a foundation that the community itself owns.
 
-## v0.1 原则
+## Core Principles
 
-- **单租户运行，多租户预留**：每张核心表带 `tenant_id uuid nullable` 字段
-- **不上 WebSocket**：通知走 `GET /api/notifications` 轮询
-- **AI Provider 不写死**：抽象层接 OpenAI-compatible + 国产兜底
-- **代码按插件思路分层**：domain / service / api 三层解耦，service 是未来插件替换的边界
+- **Users own their data** — full JSON export, no lock-in
+- **Communities own their rules** — moderation, channels, visibility all under your control
+- **Self-hostable** — `git clone` and `docker compose up`
+- **Data is portable** — import / export, future ActivityPub support
+- **AI is provider-agnostic** — OpenAI / DeepSeek / MiniMax / Ollama / any OpenAI-compatible endpoint
+- **Open by default** — REST API, future WebSocket / Webhook, future plugin system
 
 ---
 
-## 快速开始
+## v0.1 Scope
+
+This is the skeleton release. We deliberately cut scope to ship a working foundation.
+
+**Included:**
+- User registration / login (email + password)
+- Personal profile pages
+- API Tokens (for bots and integrations)
+- Channels (public / private)
+- Posts (Markdown)
+- Comments (one-level + nested replies)
+- Tags
+- In-app notifications (polling, no WebSocket)
+- Basic admin: ban / unban / suspend / promote / demote users, delete posts
+- AI Provider abstraction layer (OpenAI-compatible + 国产 models)
+- AI post summary
+- PostgreSQL schema with `tenant_id` reserved
+- JSON data export
+- Docker Compose one-command deployment
+- README / ROADMAP / VISION / ARCHITECTURE / API docs (bilingual)
+
+**Not in v0.1 (deferred to v0.2+):**
+- Private messages / group chat
+- WebSocket / real-time
+- Webhook / Bot API
+- AI profile / matching / anti-spam
+- Plugin hot-reload
+- ActivityPub / federation
+
+## v0.1 Principles
+
+- **Single-tenant, multi-tenant-ready**: every core table carries a `tenant_id uuid nullable` field
+- **No WebSocket**: notifications are served via `GET /api/notifications` polling
+- **Provider-agnostic AI**: every LLM goes through the `AIProvider` abstraction layer
+- **Plugin-shaped code from day 1**: domain / service / api layers are decoupled; services are the boundary for future plugin replacement
+
+---
+
+## Quick Start
 
 ```bash
 git clone https://github.com/linkaidadie-hash/opencord.git
 cd opencord
 cp .env.example .env
-# 编辑 .env，至少填上 POSTGRES_PASSWORD 和至少一个 AI Provider 的 Key
+# Edit .env — at minimum set POSTGRES_PASSWORD and one AI Provider's key
 docker compose up -d
 ```
 
-启动后：
+After startup:
+- Web frontend: http://localhost:3000
+- API docs: http://localhost:8000/docs
+- PostgreSQL: localhost:5432
 
-- Web 前端：<http://localhost:3000>
-- API 文档：<http://localhost:8000/docs>
-- PostgreSQL：localhost:5432
+First-time setup — run the seed script to create the default tenant, admin user, and sample channels:
+
+```bash
+docker compose exec api python seed.py
+```
+
+Default admin (set in `.env`):
+- Email: `INITIAL_ADMIN_EMAIL` (default `admin@opencord.local`)
+- Password: `INITIAL_ADMIN_PASSWORD` (default `change-me`)
+
+Then visit `/admin/ai` to add an AI Provider, and trigger a post summary from any post detail page via `POST /api/ai/summarize-post/{post_id}`.
 
 ---
 
-## 技术栈
+## Tech Stack
 
-| 层 | 选型 | 原因 |
+| Layer | Choice | Why |
 |---|---|---|
-| 前端 | Next.js 14 (App Router) + TypeScript + Tailwind | SSR、生态成熟、自部署简单 |
-| 后端 | FastAPI (Python 3.12) | AI 生态最顺，类型友好，文档自动出 |
-| 数据库 | PostgreSQL 16 + pgvector | 主存储 + 向量检索（同库） |
-| 缓存 | Redis 7 | 会话 / 限流 / AI 结果缓存 |
-| 实时通信 | **v0.1 不上** | SSE / WebSocket 留 v0.2 |
-| 对象存储 | 本地存储（v0.1）→ S3 兼容（v0.2+） | 减少部署摩擦 |
-| AI | OpenAI-compatible 抽象 | 不绑定单一平台 |
-| 部署 | Docker Compose | 一键起，零配置 |
+| Frontend | Next.js 14 (App Router) + TypeScript + Tailwind | SSR, mature ecosystem, easy self-host |
+| Backend | FastAPI (Python 3.12) | Best AI ecosystem, type-friendly, auto docs |
+| Database | PostgreSQL 16 + pgvector | Primary storage + vector search in one place |
+| Cache | Redis 7 | Sessions / rate-limit / AI result cache |
+| Real-time | **Not in v0.1** | SSE / WebSocket deferred to v0.2 |
+| Object storage | Local (v0.1) → S3 (v0.2+) | Reduce deployment friction |
+| AI | OpenAI-compatible abstraction | No platform lock-in |
+| Deployment | Docker Compose | One command, zero config |
 
 ---
 
-## 项目结构
+## Project Structure
 
 ```
 opencord/
 ├── apps/
-│   ├── web/          # Next.js 前端
-│   └── api/          # FastAPI 后端
+│   ├── web/                  # Next.js frontend
+│   └── api/                  # FastAPI backend
 ├── packages/
-│   ├── core/         # 领域模型 + 业务规则（核心逻辑）
-│   ├── ai/           # AI Provider 抽象层
-│   ├── export/       # 数据导出工具
-│   └── database/     # SQLAlchemy 模型 + Alembic 迁移
-├── services/
-│   ├── user_service.py
-│   ├── post_service.py
-│   ├── comment_service.py
-│   ├── notification_service.py
-│   └── ai_summary_service.py
+│   ├── ai/                   # AI Provider abstraction layer (standalone Python package)
+│   ├── core/                 # (reserved for v0.2) domain models
+│   ├── export/               # (reserved for v0.2) data export utilities
+│   └── database/             # (reserved for v0.2) SQLAlchemy models / Alembic
+├── services/                 # (top-level) cross-app service contracts (future)
 ├── db/
-│   └── schema.sql    # 初始 schema（带 tenant_id 预留）
+│   └── schema.sql            # Initial schema (tenant_id reserved, pgvector)
 ├── docs/
-│   ├── ROADMAP.md
-│   └── ARCHITECTURE.md
+│   ├── ROADMAP.md / ROADMAP.zh-CN.md
+│   ├── ARCHITECTURE.md / ARCHITECTURE.zh-CN.md
+│   ├── API.md / API.zh-CN.md
+│   └── VISION.md / VISION.zh-CN.md
 ├── scripts/
-│   └── seed.py       # 初始化种子数据
+│   └── seed.py
 ├── docker-compose.yml
 ├── .env.example
-└── README.md
+└── README.md / README.zh-CN.md
 ```
 
-`core` 和 `service` 的边界：
-- `core`：纯领域逻辑，无 I/O 依赖（纯函数 + dataclass）
-- `service`：编排 core + 数据库 + AI，**是未来插件替换的边界**
+The boundary between app-internal code and top-level `services` is intentional:
+- Domain logic lives close to the type definitions, with no I/O dependencies
+- Services orchestrate domain + database + AI, and are the boundary for future plugin replacement
 
 ---
 
-## 商业层（不挣钱也可以做，但不堵死）
+## Commercial Layer (not in v0.1)
 
-- 开源社区系统：**免费**
-- 托管版：v0.4 再设计
-- 企业私有部署：v0.4 起开放
-- 插件市场：v0.3 之后再说
-- AI 额度托管：v0.4
-- 定制开发：现在就能接
+Open source does not mean "no business model":
 
-v0.1 阶段不预设商业化。
+- Open-source community system: **free**
+- Hosted version: v0.4
+- Enterprise private deployment: v0.4+
+- Plugin marketplace: v0.3+
+- AI usage hosting: v0.4
+- Custom development: available now
 
----
-
-## 协议
-
-- 代码：[MIT](LICENSE)
-- 文档：[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
-- 数据：用户自有（导出 JSON 即可搬家）
+No monetization in v0.1. The first goal is a working, shippable foundation.
 
 ---
 
-## 路线图
+## Documentation
 
-详见 [ROADMAP.md](docs/ROADMAP.md)。
-
-简版：
-
-- **v0.1** — Skeleton（当前）
-- **v0.2** — Messaging & Bots（私信 / 群聊 / WebSocket / Bot API）
-- **v0.3** — Federation & Migration（ActivityPub 探索 / 迁移工具 / 插件系统 alpha）
-- **v0.4** — Hosted / Multi-tenant（租户管理 / 托管版 / 插件市场）
+- [ROADMAP.md](docs/ROADMAP.md) / [ROADMAP.zh-CN.md](docs/ROADMAP.zh-CN.md) — version planning
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) / [ARCHITECTURE.zh-CN.md](docs/ARCHITECTURE.zh-CN.md) — technical architecture
+- [API.md](docs/API.md) / [API.zh-CN.md](docs/API.zh-CN.md) — REST API reference
+- [VISION.md](docs/VISION.md) / [VISION.zh-CN.md](docs/VISION.zh-CN.md) — why OpenCord exists
 
 ---
 
-## 贡献
+## License
 
-v0.1 阶段不接受大改 PR（骨架还在动）。欢迎：
-
-- 提 Issue 讨论设计
-- 修 bug / 补测试
-- 完善文档
+- Code: [MIT](LICENSE)
+- Documentation: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- Data: owned by the user (export as JSON to leave)
 
 ---
 
-## 维护者
+## Maintainer
 
 - @linkaidadie-hash
 
-"造船出海，不是池塘里捞虾。"
+> Building a boat, not fishing in someone else's pond.
