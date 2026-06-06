@@ -76,12 +76,16 @@ This is the skeleton release. We deliberately cut scope to ship a working founda
 
 ## Quick Start
 
+**No API key needed.** A `MockAIProvider` is shipped and seeded as default. The full flow works offline.
+
 ```bash
 git clone https://github.com/linkaidadie-hash/opencord.git
 cd opencord
 cp .env.example .env
-# Edit .env — at minimum set POSTGRES_PASSWORD and one AI Provider's key
-docker compose up -d
+# Edit .env — minimum: set POSTGRES_PASSWORD (any value).
+# Other variables have safe defaults for local dev.
+# AI provider key is OPTIONAL in v0.1 (Mock is the default).
+docker compose up -d --build
 ```
 
 After startup:
@@ -89,7 +93,7 @@ After startup:
 - API docs: http://localhost:8000/docs
 - PostgreSQL: localhost:5432
 
-First-time setup — run the seed script to create the default tenant, admin user, and sample channels:
+First-time setup — run the seed script to create the default tenant, admin user, sample channels, and the Mock AI provider:
 
 ```bash
 docker compose exec api python seed.py
@@ -99,7 +103,27 @@ Default admin (set in `.env`):
 - Email: `INITIAL_ADMIN_EMAIL` (default `admin@opencord.local`)
 - Password: `INITIAL_ADMIN_PASSWORD` (default `change-me`)
 
-Then visit `/admin/ai` to add an AI Provider, and trigger a post summary from any post detail page via `POST /api/ai/summarize-post/{post_id}`.
+Try the AI summary end-to-end (admin only in v0.1):
+
+```bash
+# Get a post id
+curl http://localhost:8000/api/posts
+
+# Login as admin
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email_or_username":"admin","password":"change-me"}'
+# Save .access_token from the response
+
+# Trigger AI summary (uses Mock by default)
+curl -X POST http://localhost:8000/api/ai/summarize-post/<POST_ID> \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+# Returns: {"post_id":"...","ai_summary":"[Mock] ..."}
+```
+
+When you're ready to use a real LLM, visit `/admin/ai` and add an OpenAI / DeepSeek / MiniMax / Ollama provider. Then set it as default. The Mock provider stays available as a fallback.
+
+> For full deployment verification, see [DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md).
 
 ---
 

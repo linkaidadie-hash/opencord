@@ -262,6 +262,11 @@ class DeepSeekProvider(OpenAICompatibleProvider):
 # Factory
 # =====================================================
 
+# Mock provider 不需要 import 在顶部，延迟到 __init__.py 末尾注册
+# 避免循环 import（mock.py 也 import 本文件的数据结构）
+from .mock import MockAIProvider  # noqa: E402
+
+
 class AIProviderFactory:
     """根据 type 字符串创建 Provider 实例。"""
 
@@ -269,6 +274,7 @@ class AIProviderFactory:
         "openai-compatible": OpenAICompatibleProvider,
         "MiniMax": MiniMaxProvider,
         "deepseek": DeepSeekProvider,
+        "mock": MockAIProvider,
         # "ollama": OllamaProvider,  # v0.1 暂不单独实现，复用 openai-compatible + 不同 base_url
     }
 

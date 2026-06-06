@@ -5,6 +5,12 @@ RUN npm install --legacy-peer-deps
 
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Build-time args for NEXT_PUBLIC_* variables
+# 这些会被 bake 进 client bundle；运行时改 env 不会生效
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/web .
 ENV NEXT_TELEMETRY_DISABLED=1

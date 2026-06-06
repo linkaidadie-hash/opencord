@@ -69,12 +69,16 @@ OpenCord 想提供另一条路：让社区自己拥有地基。
 
 ## 快速开始
 
+**不需要 API key。** v0.1 自带 `MockAIProvider` 并设为默认。完整流程离线可跑。
+
 ```bash
 git clone https://github.com/linkaidadie-hash/opencord.git
 cd opencord
 cp .env.example .env
-# 编辑 .env，至少填上 POSTGRES_PASSWORD 和至少一个 AI Provider 的 Key
-docker compose up -d
+# 编辑 .env —— 至少改 POSTGRES_PASSWORD（任意值）
+# 其他变量本地开发有安全默认值
+# AI provider key 在 v0.1 是可选的（Mock 是默认）
+docker compose up -d --build
 ```
 
 启动后：
@@ -83,7 +87,7 @@ docker compose up -d
 - API 文档：http://localhost:8000/docs
 - PostgreSQL：localhost:5432
 
-首次启动后跑 seed 脚本创建默认租户、管理员账号和示例频道：
+首次启动后跑 seed 脚本，创建默认租户、管理员、示例频道、Mock AI provider：
 
 ```bash
 docker compose exec api python seed.py
@@ -94,7 +98,27 @@ docker compose exec api python seed.py
 - 邮箱：`INITIAL_ADMIN_EMAIL`（默认 `admin@opencord.local`）
 - 密码：`INITIAL_ADMIN_PASSWORD`（默认 `change-me`）
 
-然后访问 `/admin/ai` 加一个 AI Provider，回到任意帖子详情页，通过 `POST /api/ai/summarize-post/{post_id}` 触发 AI 总结。
+端到端试一下 AI 总结（v0.1 仅 admin）：
+
+```bash
+# 拿一个 post id
+curl http://localhost:8000/api/posts
+
+# admin 登录
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email_or_username":"admin","password":"change-me"}'
+# 把响应的 .access_token 存下来
+
+# 触发 AI 总结（默认用 Mock）
+curl -X POST http://localhost:8000/api/ai/summarize-post/<POST_ID> \
+  -H "Authorization: Bearer <ADMIN_TOKEN>"
+# 返回：{"post_id":"...","ai_summary":"[Mock] ..."}
+```
+
+想用真 LLM 时，进 `/admin/ai` 加一个 OpenAI / DeepSeek / MiniMax / Ollama provider，切为 default 即可。Mock 保留作 fallback。
+
+> 完整部署验收见 [DEPLOYMENT_CHECKLIST.zh-CN.md](docs/DEPLOYMENT_CHECKLIST.zh-CN.md)。
 
 ---
 

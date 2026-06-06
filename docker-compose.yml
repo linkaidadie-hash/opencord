@@ -66,6 +66,10 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      # NEXT_PUBLIC_API_URL 在 build 时注入：浏览器端可见
+      # 留空则 lib/api.ts 用空字符串（走 Next.js rewrite 到 api:8000）
+      args:
+        NEXT_PUBLIC_API_URL: ${OPENCORD_BASE_URL:-}
     container_name: opencord-web
     restart: unless-stopped
     depends_on:
@@ -73,7 +77,7 @@ services:
     env_file:
       - .env
     environment:
-      NEXT_PUBLIC_API_URL: ${OPENCORD_BASE_URL:-http://localhost:3000}
+      # API_INTERNAL_URL 是 runtime env，Next.js rewrite 用它
       API_INTERNAL_URL: http://api:8000
     ports:
       - "3000:3000"

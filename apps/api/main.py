@@ -43,6 +43,15 @@ async def health():
     return {"status": "ok", "version": settings.OPENCORD_VERSION}
 
 
+@app.get("/version", tags=["meta"])
+async def version():
+    return {
+        "name": "OpenCord",
+        "version": settings.OPENCORD_VERSION,
+        "instance": settings.OPENCORD_INSTANCE_NAME,
+    }
+
+
 # Mount routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])

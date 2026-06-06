@@ -1,7 +1,16 @@
-/** OpenCord API client (server-side) */
+/**
+ * OpenCord API client (server-side)
+ *
+ * URL 解析规则（按优先级）：
+ * 1. NEXT_PUBLIC_API_URL（绝对 URL，浏览器直接访问，覆盖一切）
+ * 2. 空字符串（让 Next.js rewrite 把 /api/* 转发到后端）
+ *
+ * 故意不读 API_INTERNAL_URL —— 那是 docker 内部地址（http://api:8000），
+ * 浏览器在用户机器上访问不到，只供 next.config.js 的 rewrite 用。
+ */
 import 'server-only';
 
-const API_URL = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || '';
 
 export class APIError extends Error {
   constructor(public status: number, public detail: any) {
