@@ -39,9 +39,10 @@ services:
       - opencord-net
 
   api:
+    # Build context 是项目根，让 api 能 import ../../packages/ai
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
     container_name: opencord-api
     restart: unless-stopped
     depends_on:
@@ -63,8 +64,8 @@ services:
 
   web:
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
     container_name: opencord-web
     restart: unless-stopped
     depends_on:
