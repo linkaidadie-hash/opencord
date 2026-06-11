@@ -13,6 +13,20 @@ The goal is to give communities a portable foundation.
 
 ---
 
+## Current demo slice
+
+The code on `main` is the v0.1 skeleton. The current demo slice is being built on a feature branch:
+
+- **Open Topic Network** — topics become first-class; communities host topics; relations form a graph; follows bind users to communities/topics.
+- **Open Plaza Signals** — a public square where users post lightweight signals: *"I'm looking for X / I'd love to talk about Y / I can help with Z"*.
+- **Feature branch**: [`feature/open-plaza-c2-lite`](https://github.com/linkaidadie-hash/opencord/tree/feature/open-plaza-c2-lite) (pushed, not yet merged into `main`).
+
+What this branch is **not**: it is not a chat app, not a Telegram / Discord clone, not a forum, not a project management tool. See [`AGENTS.md`](AGENTS.md) § 1 for the positioning rules.
+
+The application narrative for this slice lives in [`docs/OPENAI_OSS_APPLICATION_NOTES.md`](docs/OPENAI_OSS_APPLICATION_NOTES.md).
+
+---
+
 ## Why OpenCord
 
 Today, many communities live inside closed platforms:
