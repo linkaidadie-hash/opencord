@@ -224,3 +224,131 @@ class AdminUserAction(BaseModel):
 
 # Update forward refs
 TokenResponse.model_rebuild()
+
+
+# =====================================================
+# Open Topic Network（C 阶段）
+#   所有 type 字段在应用层用 core/open_topic.py 校验
+# =====================================================
+class CommunityCreate(BaseModel):
+    slug: str = Field(min_length=2, max_length=64, pattern=r"^[a-z0-9-]+$")
+    name: str = Field(min_length=1, max_length=128)
+    description: str | None = None
+    visibility: str = "public"
+
+
+class CommunityPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    slug: str
+    name: str
+    description: str | None
+    visibility: str
+    topic_count: int
+    created_by: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class TopicCreate(BaseModel):
+    community_id: uuid.UUID
+    slug: str = Field(min_length=2, max_length=128, pattern=r"^[a-z0-9-]+$")
+    title: str = Field(min_length=1, max_length=255)
+    body_md: str = Field(default="", max_length=50000)
+
+
+class TopicUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    body_md: str | None = Field(default=None, max_length=50000)
+    status: str | None = None
+
+
+class TopicPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    community_id: uuid.UUID
+    slug: str
+    title: str
+    body_md: str
+    status: str
+    created_by: uuid.UUID
+    thread_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class TopicListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    community_id: uuid.UUID
+    slug: str
+    title: str
+    status: str
+    thread_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ThreadCreate(BaseModel):
+    topic_id: uuid.UUID
+    parent_id: uuid.UUID | None = None
+    body_md: str = Field(min_length=1, max_length=50000)
+
+
+class ThreadPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    topic_id: uuid.UUID
+    parent_id: uuid.UUID | None
+    created_by: uuid.UUID
+    body_md: str
+    body_html: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class TopicSummaryPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    topic_id: uuid.UUID
+    summary_md: str
+    summary_html: str
+    generated_by: str
+    generated_at: datetime
+    updated_at: datetime
+
+
+class RelationCreate(BaseModel):
+    subject_type: str
+    subject_id: uuid.UUID
+    relation_type: str
+    object_type: str
+    object_id: uuid.UUID
+    weight: float = Field(default=1.0, ge=0.0, le=999.999)
+
+
+class RelationPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    subject_type: str
+    subject_id: uuid.UUID
+    relation_type: str
+    object_type: str
+    object_id: uuid.UUID
+    weight: float
+    created_at: datetime
+
+
+class FollowCreate(BaseModel):
+    target_type: str
+    target_id: uuid.UUID
+
+
+class FollowPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    follower_id: uuid.UUID
+    target_type: str
+    target_id: uuid.UUID
+    created_at: datetime
