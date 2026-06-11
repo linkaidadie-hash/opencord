@@ -51,19 +51,24 @@ import services.topic_service
 import services.thread_service
 import services.relation_service
 import services.follow_service
+import services.signal_service
+import services.plaza_service
 import core.open_topic
 import api.open_topic_communities
 import api.open_topic_topics
 import api.open_topic_threads
 import api.open_topic_relations
 import api.open_topic_follows
+import api.open_topic_signals
 import api.open_topic
+import api.open_plaza
 import main
 
 # 6 个新 ORM 类
 for cls in ['Community', 'Topic', 'Thread', 'TopicSummary', 'Relation', 'Follow']:
     assert hasattr(models, cls), f'models missing {cls}'
-print(f'[ok] 6 new ORM classes present: Community, Topic, Thread, TopicSummary, Relation, Follow')
+assert hasattr(models, 'Signal'), 'models missing Signal (C2-lite)'
+print(f'[ok] 7 new ORM classes present: Community, Topic, Thread, TopicSummary, Relation, Follow, Signal')
 
 # core.open_topic 常量
 import core.open_topic as ot
@@ -71,11 +76,17 @@ assert len(ot.SUBJECT_TYPES) >= 8
 assert 'topic' in ot.SUBJECT_TYPES
 assert 'follows' in ot.RELATION_TYPES
 assert 'community' in ot.FOLLOW_TARGET_TYPES
-print(f'[ok] core.open_topic: SUBJECT_TYPES={len(ot.SUBJECT_TYPES)}, RELATION_TYPES={len(ot.RELATION_TYPES)}, FOLLOW_TARGET_TYPES={len(ot.FOLLOW_TARGET_TYPES)}')
+assert 'looking_for_person' in ot.SIGNAL_INTENT_TYPES
+assert 'offering_help' in ot.SIGNAL_INTENT_TYPES
+print(f'[ok] core.open_topic: SUBJECT_TYPES={len(ot.SUBJECT_TYPES)}, RELATION_TYPES={len(ot.RELATION_TYPES)}, FOLLOW_TARGET_TYPES={len(ot.FOLLOW_TARGET_TYPES)}, SIGNAL_INTENT_TYPES={len(ot.SIGNAL_INTENT_TYPES)}')
 
 # /api/open-topic/* 挂载
 assert any('open-topic' in (getattr(r, 'path', '') or '') for r in main.app.routes), 'open-topic prefix not mounted'
 print('[ok] /api/open-topic/* mounted in main.app')
+
+# /api/plaza 挂载（C2-lite）
+assert any('plaza' in (getattr(r, 'path', '') or '') for r in main.app.routes), 'plaza prefix not mounted'
+print('[ok] /api/plaza/* mounted in main.app')
 
 # open_topic 子路由
 import api.open_topic as ot_api

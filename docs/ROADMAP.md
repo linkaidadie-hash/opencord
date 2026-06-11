@@ -59,6 +59,44 @@
 
 ---
 
+## C / C2-lite — Open Topic Network + Open Plaza (in progress)
+
+**Goal**: Lay the public-square data foundation. Topics become first-class; signals become the lightweight "I'm looking for X / I can help with Y" expression. No private chat, no bots, no federation — just open public surface area.
+
+**Already shipped** (commits `63b3e92` and following):
+
+- **C — Open Topic Network** (`feature/open-topic-network-c1`):
+  - 6 new tables: `communities` / `topics` / `threads` / `topic_summaries` / `relations` / `follows`
+  - All `tenant_id NOT NULL`; no old table mutated
+  - `/api/open-topic/*` with 10 paths / 15 endpoints
+  - Minimal `/open-topic` and `/open-topic/[topicId]` pages
+- **C2-lite — Open Plaza + Signals** (`feature/open-plaza-c2-lite`):
+  - 1 new table: `signals` (intent-type VARCHAR, tags JSONB, topic_id nullable)
+  - `/api/plaza` aggregate endpoint (recent topics + recent signals + description)
+  - `/api/open-topic/signals` CRUD (3 endpoints)
+  - Minimal `/plaza` page with topic + signal feed + signal-form placeholder
+
+**Signal intent types** (application-layer constants, no PG ENUM):
+
+- `looking_for_person` · `looking_for_help` · `looking_for_project`
+- `offering_help` · `open_to_chat` · `seeking_feedback`
+
+**Explicitly NOT in C / C2-lite** (parked for later stages):
+
+- Encounter / private chat / group chat / DMs
+- WebSocket / SSE / push notifications
+- Agent / AgentRun / AgentAction tables
+- 杜工部 integration
+- Project / Task / Acceptance Criteria
+- ActivityPub / AT Protocol federation
+- Plugin hot-reload
+- Hosted billing
+- Map / 同城 / 店铺 / 棋友匹配
+
+**Why this order**: Public surface before private surface. The square is open, named, navigable; encounters and projects come only after that shape holds up.
+
+---
+
 ## v0.2 — Messaging & Bots
 
 **Goal**: Let communities "do private chat + accept bots".

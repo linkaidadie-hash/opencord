@@ -14,6 +14,9 @@ export function Nav() {
           <Link href="/open-topic" className="text-gray-700 hover:text-primary-600">
             开放议题
           </Link>
+          <Link href="/plaza" className="text-gray-700 hover:text-primary-600">
+            广场
+          </Link>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/login" className="text-sm text-gray-700 hover:text-primary-600">

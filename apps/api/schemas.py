@@ -352,3 +352,52 @@ class FollowPublic(BaseModel):
     target_type: str
     target_id: uuid.UUID
     created_at: datetime
+
+
+# =====================================================
+# C2-lite: Open Plaza Signals
+# =====================================================
+class SignalCreate(BaseModel):
+    topic_id: uuid.UUID | None = None
+    intent_type: str
+    title: str = Field(min_length=1, max_length=200)
+    body: str | None = Field(default=None, max_length=10000)
+    tags: list[str] = Field(default_factory=list, max_length=20)
+    visibility: str = "public"
+    expires_at: datetime | None = None
+
+
+class SignalPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    user_id: uuid.UUID
+    topic_id: uuid.UUID | None
+    intent_type: str
+    title: str
+    body: str | None
+    tags: list[str] = Field(default_factory=list)
+    visibility: str
+    expires_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SignalListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    user_id: uuid.UUID
+    topic_id: uuid.UUID | None
+    intent_type: str
+    title: str
+    tags: list[str] = Field(default_factory=list)
+    created_at: datetime
+
+
+# =====================================================
+# Plaza 聚合响应（首页用）
+# =====================================================
+class PlazaResponse(BaseModel):
+    description: str
+    recent_topics: list[TopicListItem]
+    recent_signals: list[SignalListItem]
+    hot: list = Field(default_factory=list)  # 预留（C2-lite 不做推荐）

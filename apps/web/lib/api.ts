@@ -259,3 +259,62 @@ export async function listOpenTopicRelations(opts: {
   const qs = params.toString();
   return request(`/api/open-topic/relations${qs ? `?${qs}` : ''}`);
 }
+
+// =====================================================
+// Open Plaza + Signals（C2-lite 最小客户端）
+// =====================================================
+export interface SignalListItemV2 {
+  id: string;
+  user_id: string;
+  topic_id: string | null;
+  intent_type: string;
+  title: string;
+  tags: string[];
+  created_at: string;
+}
+
+export interface SignalPublicV2 extends SignalListItemV2 {
+  body: string | null;
+  visibility: string;
+  expires_at: string | null;
+  updated_at: string;
+}
+
+export interface PlazaResponse {
+  description: string;
+  recent_topics: TopicListItemV2[];
+  recent_signals: SignalListItemV2[];
+  hot: any[];
+}
+
+export async function getPlaza(): Promise<PlazaResponse> {
+  return request('/api/plaza');
+}
+
+export async function listOpenTopicSignals(opts: { intentType?: string; topicId?: string; limit?: number } = {}): Promise<SignalListItemV2[]> {
+  const params = new URLSearchParams();
+  if (opts.intentType) params.set('intent_type', opts.intentType);
+  if (opts.topicId) params.set('topic_id', opts.topicId);
+  if (opts.limit) params.set('limit', String(opts.limit));
+  const qs = params.toString();
+  return request(`/api/open-topic/signals${qs ? `?${qs}` : ''}`);
+}
+
+export async function getOpenTopicSignal(id: string): Promise<SignalPublicV2> {
+  return request(`/api/open-topic/signals/${id}`);
+}
+
+export async function createOpenTopicSignal(token: string, body: {
+  topic_id?: string | null;
+  intent_type: string;
+  title: string;
+  body?: string | null;
+  tags?: string[];
+  visibility?: string;
+}): Promise<SignalPublicV2> {
+  return request('/api/open-topic/signals', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    token,
+  });
+}

@@ -92,6 +92,36 @@ SUMMARY_GENERATED_BY_DEFAULT: Final[str] = "system"
 
 
 # =====================================================
+# C2-lite：Open Plaza Signals
+# =====================================================
+# Signal = "我想找什么 / 我愿意聊什么 / 我能提供什么"
+# 合法值在应用层校验；VARCHAR(64)
+SIGNAL_INTENT_TYPES: Final[tuple[str, ...]] = (
+    "looking_for_person",
+    "looking_for_help",
+    "looking_for_project",
+    "offering_help",
+    "open_to_chat",
+    "seeking_feedback",
+)
+
+# Signal 的可见性
+SIGNAL_VISIBILITIES: Final[tuple[str, ...]] = (
+    "public",      # 广场里所有人可见
+    "unlisted",    # 不进广场 feed；凭链接可见
+    "private",     # 仅自己可见（草稿或私密）
+)
+
+
+def ensure_signal_intent_type(value: str) -> None:
+    ensure_in(value, SIGNAL_INTENT_TYPES, "intent_type")
+
+
+def ensure_signal_visibility(value: str) -> None:
+    ensure_in(value, SIGNAL_VISIBILITIES, "visibility")
+
+
+# =====================================================
 # 默认 tenant_id（与 channel_service / seed.py 保持一致）
 # =====================================================
 DEFAULT_TENANT_ID: Final[str] = "00000000-0000-0000-0000-000000000001"
