@@ -1,5 +1,7 @@
 # OpenCord
 
+[![runtime-smoke](https://github.com/linkaidadie-hash/opencord/actions/workflows/runtime-smoke.yml/badge.svg)](.github/workflows/runtime-smoke.yml)
+
 English | [简体中文](./README.zh-CN.md)
 
 **An open-source, AI-native community system.**
@@ -211,6 +213,8 @@ No monetization in v0.1. The first goal is a working, shippable foundation.
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) / [ARCHITECTURE.zh-CN.md](docs/ARCHITECTURE.zh-CN.md) — technical architecture
 - [API.md](docs/API.md) / [API.zh-CN.md](docs/API.zh-CN.md) — REST API reference
 - [VISION.md](docs/VISION.md) / [VISION.zh-CN.md](docs/VISION.zh-CN.md) — why OpenCord exists
+- [RUNTIME_SMOKE_TESTS.md](docs/RUNTIME_SMOKE_TESTS.md) — how the runtime smoke (issue #7) is wired up: GitHub Actions workflow + local `scripts/runtime_smoke_open_plaza.sh`
+- [DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) / [DEPLOYMENT_CHECKLIST.zh-CN.md](docs/DEPLOYMENT_CHECKLIST.zh-CN.md) — post-deploy verification
 
 ---
 
