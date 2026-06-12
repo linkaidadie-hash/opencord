@@ -35,10 +35,12 @@ import sys
 from pathlib import Path
 import os
 
-# Resolve paths from CWD (subprocess is launched with cwd=apps/api) and
-# the script's own location so this works on any host.
+# Resolve paths from CWD (subprocess is launched with cwd=apps/api).
+# Layout: REPO/apps/api  ->  cwd=apps/api  ->  REPO = cwd.parent.parent
 API = Path(os.getcwd()).resolve()
-REPO = API.parent
+APPS = API.parent        # repo/apps
+REPO = APPS.parent       # repo root
+PACKAGES = REPO / 'packages'
 
 # Optional local check-venv (Windows layout + Linux venv layout).
 # Only added if present; never required.
@@ -52,11 +54,21 @@ for candidate in VENV_CANDIDATES:
         if s not in sys.path:
             sys.path.insert(0, s)
 
-# Make sure repo-root and apps/api importable even if cwd was not propagated.
-for p in (REPO, API):
-    s = str(p)
-    if s not in sys.path:
-        sys.path.insert(0, s)
+# Make sure repo-root, apps/, apps/api and packages/ are importable.
+for p in (API, APPS, REPO, PACKAGES):
+    try:
+        if p.exists():
+            s = str(p)
+            if s not in sys.path:
+                sys.path.insert(0, s)
+    except OSError:
+        pass
+
+print(f'[paths] REPO={REPO}')
+print(f'[paths] APPS={APPS}')
+print(f'[paths] API={API}')
+print(f'[paths] PACKAGES={PACKAGES} (exists={PACKAGES.exists()})')
+print(f'[paths] sys.path head: ' + ' | '.join(sys.path[:6]))
 
 import database
 async def _noop():
@@ -147,10 +159,17 @@ print('\\n[ALL PYTHON IMPORT CHECKS PASSED]')
             text=True,
             timeout=60,
         )
-        print(result.stdout)
+        # Always echo child stdout so the GitHub Actions log shows progress.
+        if result.stdout:
+            print("--- child stdout ---")
+            print(result.stdout)
         if result.returncode != 0:
-            print("--- STDERR ---")
-            print(result.stderr)
+            print("--- child STDERR ---")
+            if result.stderr:
+                print(result.stderr)
+            else:
+                print("(empty)")
+            print(f"--- child exit code: {result.returncode} ---")
             return result.returncode
     finally:
         p.unlink(missing_ok=True)
