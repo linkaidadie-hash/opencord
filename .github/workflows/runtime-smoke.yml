@@ -113,13 +113,28 @@ jobs:
           echo "postgres did not become ready in 30s" >&2
           exit 1
 
+      # ---- 2b) ensure postgresql-client + connection diagnostics --------
+      - name: install postgres client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          which psql
+          psql --version
+
+      - name: verify postgres connection
+        env:
+          PGPASSWORD: change_me
+        run: |
+          pg_isready -h localhost -p 5432 -U opencord -d opencord
+          psql -h localhost -U opencord -d opencord -v ON_ERROR_STOP=1 -c "select version();"
+          psql -h localhost -U opencord -d opencord -v ON_ERROR_STOP=1 -c "select current_database(), current_user;"
+
       # ---- 3) apply schema + migrations ---------------------------------
       - name: apply db/schema.sql (v0.1 baseline)
+        env:
+          PGPASSWORD: change_me
         run: |
-          PGPASSWORD=change_me psql \
-            -h localhost -U opencord -d opencord \
-            -v ON_ERROR_STOP=1 \
-            -f db/schema.sql
+          psql -h localhost -U opencord -d opencord -v ON_ERROR_STOP=1 -a -f db/schema.sql
 
       - name: apply migration 0001 (Open Topic Network)
         run: |
