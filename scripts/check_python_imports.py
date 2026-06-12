@@ -33,12 +33,30 @@ def import_smoke() -> int:
     code = """
 import sys
 from pathlib import Path
-VENV_SITE = Path(r'C:\\Users\\Administrator\\opencord\\apps\\api\\.venv-check\\Lib\\site-packages')
-sys.path.insert(0, str(VENV_SITE))
-API = Path(r'C:\\Users\\Administrator\\opencord\\apps\\api')
-sys.path.insert(0, str(API))
-REPO_ROOT = Path(r'C:\\Users\\Administrator\\opencord')
-sys.path.insert(0, str(REPO_ROOT))
+import os
+
+# Resolve paths from CWD (subprocess is launched with cwd=apps/api) and
+# the script's own location so this works on any host.
+API = Path(os.getcwd()).resolve()
+REPO = API.parent
+
+# Optional local check-venv (Windows layout + Linux venv layout).
+# Only added if present; never required.
+VENV_CANDIDATES = [
+    API / '.venv-check' / 'Lib' / 'site-packages',
+    API / '.venv-check' / 'lib',
+]
+for candidate in VENV_CANDIDATES:
+    if candidate.exists():
+        s = str(candidate)
+        if s not in sys.path:
+            sys.path.insert(0, s)
+
+# Make sure repo-root and apps/api importable even if cwd was not propagated.
+for p in (REPO, API):
+    s = str(p)
+    if s not in sys.path:
+        sys.path.insert(0, s)
 
 import database
 async def _noop():
