@@ -29,6 +29,7 @@ httpx==0.28.1
 
 # Markdown
 markdown==3.7
+pymdown-extensions  # required by services/markdown.py (pymdownx.tilde)
 pygments==2.19.1
 
 # Logging
