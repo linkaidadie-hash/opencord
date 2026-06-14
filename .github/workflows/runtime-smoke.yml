@@ -1,0 +1,249 @@
+# .github/workflows/runtime-smoke.yml
+#
+# Issue #7: Add runtime Docker/PostgreSQL smoke tests
+#
+# Boots the real database + redis side of the OpenCord stack in a
+# GitHub Actions job, applies db/schema.sql + db/migrations/0001 +
+# db/migrations/0002, then exercises the live API surface (/api/plaza,
+# /api/open-topic/signals, /api/open-topic/communities) plus the existing
+# 14-step curl smoke in scripts/verify_open_topic.sh.
+#
+# This is the CI counterpart of scripts/runtime_smoke_open_plaza.sh — the
+# two should always stay in sync; if you change one, change the other.
+#
+# Refs:
+#   - Issue #7: https://github.com/linkaidadie-hash/opencord/issues/7
+#   - docs/DEMO_WALKTHROUGH.md § 6.2 / § 7
+#   - AGENTS.md § 5 (pre-commit checks)
+
+name: runtime-smoke
+
+on:
+  pull_request:
+    paths:
+      - 'db/**'
+      - 'apps/api/**'
+      - 'apps/web/**'
+      - 'scripts/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/runtime-smoke.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel a previous run on the same ref when a new commit lands.
+concurrency:
+  group: runtime-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runtime-smoke:
+    name: runtime smoke (postgres + api)
+    runs-on: ubuntu-latest
+
+    # Issue #7 mirrors the v0.1 docker-compose stack:
+    #   postgres:16-alpine + redis:7-alpine
+    # Versions kept in sync with docker-compose.yml.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: opencord
+          POSTGRES_PASSWORD: change_me
+          POSTGRES_DB: opencord
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opencord -d opencord"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://opencord:change_me@localhost:5432/opencord
+      REDIS_URL: redis://localhost:6379/0
+      OPENCORD_API: http://localhost:8000
+      PYTHONPATH: ${{ github.workspace }}/apps/api:${{ github.workspace }}/packages
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: install api dependencies
+        working-directory: apps/api
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ---- 1) static SQL checks (AGENTS.md § 5) ---------------------------
+      - name: static check — migration 0001
+        run: python scripts/check_sql_0001.py
+
+      - name: static check — migration 0002
+        run: python scripts/check_sql_0002.py
+
+      - name: static check — python imports
+        run: python scripts/check_python_imports.py
+
+      # ---- 2) wait for postgres to be ready -----------------------------
+      - name: wait for postgres
+        run: |
+          for i in $(seq 1 30); do
+            if pg_isready -h localhost -p 5432 -U opencord -d opencord >/dev/null 2>&1; then
+              echo "postgres ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "postgres did not become ready in 30s" >&2
+          exit 1
+
+      # ---- 2b) ensure postgresql-client + connection diagnostics --------
+      - name: install postgres client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          which psql
+          psql --version
+
+      - name: verify postgres connection
+        env:
+          PGPASSWORD: change_me
+        run: |
+          pg_isready -h localhost -p 5432 -U opencord -d opencord
+          psql -h localhost -U opencord -d opencord -v ON_ERROR_STOP=1 -c "select version();"
+          psql -h localhost -U opencord -d opencord -v ON_ERROR_STOP=1 -c "select current_database(), current_user;"
+
+      # ---- 3) apply schema + migrations ---------------------------------
+      - name: apply db/schema.sql (v0.1 baseline)
+        env:
+          PGPASSWORD: change_me
+        run: |
+          psql -h localhost -U opencord -d opencord -v ON_ERROR_STOP=1 -a -f db/schema.sql
+
+      - name: apply migration 0001 (Open Topic Network)
+        run: |
+          PGPASSWORD=change_me psql \
+            -h localhost -U opencord -d opencord \
+            -v ON_ERROR_STOP=1 \
+            -f db/migrations/0001_open_topic_network.sql
+
+      - name: apply migration 0002 (Open Plaza Signals)
+        run: |
+          PGPASSWORD=change_me psql \
+            -h localhost -U opencord -d opencord \
+            -v ON_ERROR_STOP=1 \
+            -f db/migrations/0002_open_plaza_signals.sql
+
+      # ---- 4) assert 7 new tables + tenant_id NOT NULL ------------------
+      - name: assert 7 new tables + tenant_id NOT NULL
+        run: |
+          set -e
+          EXPECTED=(communities topics threads topic_summaries relations follows signals)
+          MISSING=0
+          for t in "${EXPECTED[@]}"; do
+            row=$(PGPASSWORD=change_me psql -h localhost -U opencord -d opencord -tA \
+              -c "SELECT data_type || '|' || is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='${t}' AND column_name='tenant_id'")
+            if [[ "${row}" != "uuid|NO" ]]; then
+              echo "::error file=db/migrations/0001_open_topic_network.sql::${t}.tenant_id wrong: '${row:-<missing>}'"
+              MISSING=$((MISSING + 1))
+              continue
+            fi
+            echo "[ok] ${t}.tenant_id uuid NOT NULL"
+          done
+          if [[ "${MISSING}" -gt 0 ]]; then
+            echo "${MISSING} table(s) failed the contract"
+            exit 1
+          fi
+
+      - name: assert v0.1 baseline tables still present
+        run: |
+          set -e
+          for t in tenants users api_tokens channels posts comments tags post_tags notifications ai_providers ai_usage_log audit_log; do
+            n=$(PGPASSWORD=change_me psql -h localhost -U opencord -d opencord -tA \
+              -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='${t}'")
+            if [[ "${n}" != "1" ]]; then
+              echo "::error file=db/schema.sql::v0.1 table missing: ${t}"
+              exit 1
+            fi
+          done
+          echo "[ok] all v0.1 baseline tables still present"
+
+      # ---- 5) boot the api (uvicorn) and curl it -----------------------
+      - name: start uvicorn in background
+        run: |
+          mkdir -p /tmp/opencord-smoke
+          nohup uvicorn main:app --host 127.0.0.1 --port 8000 --log-level info \
+            > /tmp/opencord-smoke/uvicorn.log 2>&1 &
+          echo $! > /tmp/opencord-smoke/uvicorn.pid
+          echo "uvicorn started, pid=$(cat /tmp/opencord-smoke/uvicorn.pid)"
+
+      - name: wait for /health
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "${OPENCORD_API}/health" || echo 000)
+            if [[ "${code}" == "200" ]]; then
+              echo "api ready after ${i}s (200)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::api did not become ready in 60s; tail of uvicorn.log:"
+          tail -n 100 /tmp/opencord-smoke/uvicorn.log >&2
+          exit 1
+
+      - name: curl /api/plaza
+        run: |
+          code=$(curl -s -o /tmp/opencord-smoke/plaza.json -w '%{http_code}' "${OPENCORD_API}/api/plaza")
+          echo "/api/plaza -> ${code}"
+          test "${code}" = "200" -o "${code}" = "201"
+          head -c 400 /tmp/opencord-smoke/plaza.json; echo
+
+      - name: curl /api/open-topic/signals
+        run: |
+          code=$(curl -s -o /tmp/opencord-smoke/signals.json -w '%{http_code}' "${OPENCORD_API}/api/open-topic/signals")
+          echo "/api/open-topic/signals -> ${code}"
+          test "${code}" = "200" -o "${code}" = "201"
+          head -c 400 /tmp/opencord-smoke/signals.json; echo
+
+      - name: curl /api/open-topic/communities
+        run: |
+          code=$(curl -s -o /tmp/opencord-smoke/communities.json -w '%{http_code}' "${OPENCORD_API}/api/open-topic/communities")
+          echo "/api/open-topic/communities -> ${code}"
+          test "${code}" = "200" -o "${code}" = "201"
+
+      # ---- 6) 14-step curl smoke (existing script) ----------------------
+      - name: scripts/verify_open_topic.sh (14-step curl smoke)
+        run: bash scripts/verify_open_topic.sh
+
+      # ---- 7) collect logs on failure -----------------------------------
+      - name: upload uvicorn log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uvicorn-log
+          path: /tmp/opencord-smoke/uvicorn.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: stop uvicorn
+        if: always()
+        run: |
+          if [[ -f /tmp/opencord-smoke/uvicorn.pid ]]; then
+            kill "$(cat /tmp/opencord-smoke/uvicorn.pid)" 2>/dev/null || true
+          fi

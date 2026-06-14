@@ -155,5 +155,30 @@ async def get_current_admin(
     return user
 
 
+# =====================================================
+# Optional auth (for public endpoints that personalize when signed in)
+# =====================================================
+async def get_optional_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> User | None:
+    """Return the current user if a valid token is provided, else None.
+
+    Unlike ``get_current_user``, this dependency never raises — missing or
+    invalid credentials simply resolve to ``None``. Use for endpoints whose
+    public read path must remain accessible to anonymous callers (e.g. the
+    Open Plaza aggregate homepage) while still allowing signed-in viewers
+    to receive personalized responses when they present a valid token.
+    """
+    if credentials is None:
+        return None
+    try:
+        return await get_current_user(credentials, db)
+    except HTTPException:
+        # Invalid / expired / revoked / banned token — treat as anonymous.
+        return None
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentAdmin = Annotated[User, Depends(get_current_admin)]
+OptionalUser = Annotated[User | None, Depends(get_optional_user)]
