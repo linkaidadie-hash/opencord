@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth import CurrentUser
+from auth import OptionalUser
 from database import get_db
 from schemas import PlazaResponse
 from core.open_topic import TenantMissingError
@@ -15,7 +15,7 @@ router = APIRouter()
 
 @router.get("", response_model=PlazaResponse)
 async def get_plaza(
-    user: CurrentUser = ...,
+    user: OptionalUser,
     db: AsyncSession = Depends(get_db),
 ):
     try:
